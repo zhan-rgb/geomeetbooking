@@ -68,12 +68,8 @@ body{background:#f8fafc;color:#1e293b}
         <label class="text-xs font-semibold">預約人姓名 *
           <input id="name" required maxlength="20" placeholder="例如：王小明" class="mt-1 w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm">
         </label>
-        <label class="text-xs font-semibold">開始時間 *
-          <input id="start" type="datetime-local" step="1800" required class="mt-1 w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm">
-        </label>
-        <label class="text-xs font-semibold">結束時間 *
-          <input id="end" type="datetime-local" step="1800" required class="mt-1 w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm">
-        </label>
+        <div class="text-xs font-semibold">開始時間 (24 小時制) *<div id="startBox" class="mt-1 flex gap-1.5 items-center"></div></div>
+        <div class="text-xs font-semibold">結束時間 (24 小時制) *<div id="endBox" class="mt-1 flex gap-1.5 items-center"></div></div>
       </div>
       <div class="flex items-center gap-2 text-xs text-slate-500">快速設定時長：
         <button type="button" data-hours="1" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50">+1 小時</button>
@@ -305,13 +301,27 @@ function closeModal(m) {
 }
 const closeAll = () => { ['formModal','detailModal'].forEach(id => { if (!$(id).classList.contains('hidden')) closeModal($(id)); }); activeId = null; };
 
+// 24 小時制時間選擇器：日期 + 時(00-23) + 分(00/30)，不受瀏覽器 AM/PM 設定影響
+function buildTimePicker(box, key) {
+  const cls = 'bg-slate-50 border border-slate-300 rounded-xl px-2 py-2 text-sm';
+  const sel = (suffix, count, step) => `<select id="${key}${suffix}" class="${cls}">` +
+    Array.from({ length: count / step }, (_, i) => `<option value="${i * step}">${pad(i * step)}</option>`).join('') + '</select>';
+  box.innerHTML = `<input id="${key}D" type="date" required class="${cls} min-w-0 flex-1">${sel('H', 24, 1)}<span>:</span>${sel('M', 60, 30)}`;
+}
+const getDT = key => $(key + 'D').value ? `${$(key + 'D').value}T${pad($(key + 'H').value)}:${pad($(key + 'M').value)}` : '';
+function setDT(key, d) {
+  $(key + 'D').value = ymd(d);
+  $(key + 'H').value = d.getHours();
+  $(key + 'M').value = d.getMinutes() >= 30 ? 30 : 0;
+}
+
 function openForm(presetStart) {
   $('alert').classList.add('hidden');
   let s;
   if (presetStart) s = D(presetStart);
   else { s = new Date(); s.setMinutes(s.getMinutes() >= 30 ? 60 : 30, 0, 0); }
-  $('start').value = toLocal(s);
-  $('end').value = toLocal(new Date(s.getTime() + 2 * 3600e3));
+  setDT('start', s);
+  setDT('end', new Date(s.getTime() + 2 * 3600e3));
   openModal($('formModal'));
 }
 function showAlert(msg) { $('alert').textContent = '⚠ ' + msg; $('alert').classList.remove('hidden'); }
@@ -320,7 +330,7 @@ function submitForm(e) {
   e.preventDefault();
   $('alert').classList.add('hidden');
   const r = { id: 'res-' + Date.now(), cadreKey: $('cadre').value, name: $('name').value.trim(),
-              start: $('start').value, end: $('end').value, topic: $('topic').value.trim() };
+              start: getDT('start'), end: getDT('end'), topic: $('topic').value.trim() };
   if (!r.cadreKey || !r.name || !r.start || !r.end) return showAlert('請填寫所有必填欄位！');
   if (D(r.end) <= D(r.start)) return showAlert('結束時間必須晚於開始時間！');
   const c = findConflict(r.start, r.end);
@@ -368,9 +378,7 @@ document.addEventListener('click', e => {
   if (nw) return openForm();
   if (f) { filter = f.dataset.filter; return render(); }
   if (v) { view = v.dataset.view; return render(); }
-  if (q && $('start').value) {
-    $('end').value = toLocal(new Date(D($('start').value).getTime() + q.dataset.hours * 3600e3));
-  }
+  if (q && getDT('start')) setDT('end', new Date(D(getDT('start')).getTime() + q.dataset.hours * 3600e3));
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAll(); });
 
@@ -390,6 +398,7 @@ $('resetBtn').onclick = () => {
 };
 
 // ---------- 啟動 ----------
+['start', 'end'].forEach(k => buildTimePicker($(k + 'Box'), k));
 $('cadre').innerHTML = '<option value="" disabled selected>請選擇股別</option>' +
   Object.entries(CADRES).map(([k, [n]]) => `<option value="${k}">${n}</option>`).join('');
 reservations = load() ?? [];
