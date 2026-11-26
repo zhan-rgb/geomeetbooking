@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>系學會會辦預約系統</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','Noto Sans TC','Microsoft JhengHei','sans-serif']}}}}</script>
+<style>
+:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{background:#f8fafc;color:#1e293b}
+.no-sb::-webkit-scrollbar{display:none}.no-sb{scrollbar-width:none}
+.modal{transition:opacity .2s}.modal>div{transition:transform .2s}
+.modal.off{opacity:0}.modal.off>div{transform:scale(.95)}
+</style>
+</head>
+<body class="font-sans antialiased min-h-screen pb-20 sm:pb-0">
+
+<header class="bg-white border-b border-slate-200 sticky z-30" style="top:env(safe-area-inset-top,0px)">
+  <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-xl">🚪</div>
+      <div>
+        <h1 class="font-bold text-base sm:text-lg leading-tight">系學會會辦預約系統</h1>
+        <p class="text-[11px] sm:text-xs text-slate-500">點擊空白時段可快速登記</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="resetBtn" class="px-3 py-2 text-sm text-slate-500 hover:bg-slate-100 rounded-lg">↻ <span class="hidden md:inline">清空資料</span></button>
+      <button data-new class="hidden sm:block bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-xl text-sm">＋ 立即預約</button>
+    </div>
+  </div>
+</header>
+
+<button data-new class="sm:hidden fixed bottom-5 right-5 z-30 w-14 h-14 rounded-full bg-indigo-600 text-white shadow-lg text-2xl">＋</button>
+
+<main class="max-w-7xl mx-auto px-4 py-5 space-y-4">
+  <div id="stats" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
+
+  <div class="bg-white p-3.5 rounded-2xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+    <div id="filters" class="flex items-center gap-1.5 overflow-x-auto no-sb"></div>
+    <div id="views" class="flex gap-1 bg-slate-100 p-1 rounded-xl self-start md:self-auto"></div>
+  </div>
+
+  <div class="flex items-center gap-2 bg-white px-4 py-3 rounded-2xl border border-slate-200">
+    <button id="prev" class="w-8 h-8 rounded-lg hover:bg-slate-100">‹</button>
+    <button id="today" class="px-3 py-1 rounded-lg text-xs font-medium border border-slate-300 hover:bg-slate-50">今天</button>
+    <button id="next" class="w-8 h-8 rounded-lg hover:bg-slate-100">›</button>
+    <span id="range" class="font-bold text-sm sm:text-base ml-2"></span>
+  </div>
+
+  <div id="schedule" class="bg-white rounded-2xl border border-slate-200 overflow-hidden min-h-[520px]"></div>
+</main>
+
+<!-- 新增預約 -->
+<div id="formModal" class="modal off hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50">
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-lg overflow-hidden">
+    <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
+      <h3 class="font-bold">登記會議室</h3>
+      <button data-close class="text-xl w-8 h-8 hover:bg-slate-800 rounded-lg">✕</button>
+    </div>
+    <form id="form" class="p-6 space-y-4">
+      <div class="grid sm:grid-cols-2 gap-3">
+        <label class="text-xs font-semibold">預約股別 *
+          <select id="cadre" required class="mt-1 w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm"></select>
+        </label>
+        <label class="text-xs font-semibold">預約人姓名 *
+          <input id="name" required maxlength="20" placeholder="例如：王小明" class="mt-1 w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm">
+        </label>
+        <label class="text-xs font-semibold">開始時間 *
+          <input id="start" type="datetime-local" step="1800" required class="mt-1 w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm">
+        </label>
+        <label class="text-xs font-semibold">結束時間 *
+          <input id="end" type="datetime-local" step="1800" required class="mt-1 w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm">
+        </label>
+      </div>
+      <div class="flex items-center gap-2 text-xs text-slate-500">快速設定時長：
+        <button type="button" data-hours="1" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50">+1 小時</button>
+        <button type="button" data-hours="2" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50">+2 小時</button>
+        <button type="button" data-hours="3" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50">+3 小時</button>
+      </div>
+      <label class="block text-xs font-semibold">會議事由 <span class="font-normal text-slate-400">(選填)</span>
+        <textarea id="topic" rows="2" maxlength="100" placeholder="開會主題或用途說明" class="mt-1 w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm resize-none"></textarea>
+      </label>
+      <div id="alert" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs"></div>
+      <div class="pt-2 flex justify-end gap-3 border-t border-slate-100">
+        <button type="button" data-close class="px-4 py-2 rounded-xl border border-slate-300 text-sm">取消</button>
+        <button class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm">確認登記</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 詳情 -->
+<div id="detailModal" class="modal off hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50">
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden">
+    <div id="dHead" class="p-6 text-white relative">
+      <button data-close class="absolute top-4 right-4 text-xl w-8 h-8 hover:bg-white/10 rounded-lg">✕</button>
+      <span id="dCadre" class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-white/20 mb-2"></span>
+      <h2 id="dName" class="text-2xl font-extrabold"></h2>
+      <p id="dTime" class="text-xs text-white/90 mt-1.5"></p>
+    </div>
+    <div class="p-6 space-y-4">
+      <div>
+        <h4 class="text-xs font-semibold text-slate-400">會議事由 / 說明</h4>
+        <p id="dTopic" class="text-sm mt-1 bg-slate-50 p-3 rounded-xl border border-slate-200 min-h-[4rem]"></p>
+      </div>
+      <div class="text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+        <span class="text-slate-400 block">總時長</span><b id="dDur" class="text-sm"></b>
+      </div>
+      <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+        <span class="text-[11px] text-slate-400">如需釋出時段請點擊右側取消</span>
+        <button id="delBtn" class="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-semibold px-4 py-2 rounded-xl text-xs">🗑 取消此預約</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const CADRES = {
+  president:['會長股','#d97706'], activity:['活動股','#0284c7'], art:['美宣股','#e11d48'],
+  inspection:['實察股','#059669'], photo:['攝影股','#7c3aed'], editorial:['學編股','#ea580c'],
+  equipment:['器材股','#475569'], finance:['總務股','#b45309'],
+  sports:['體育股','#65a30d'], pr:['公關股','#c026d3'], netinfo:['網資股','#4f46e5']
+};
+const cadreOf = k => { const c = CADRES[k] || ['幹部','#475569']; return { name:c[0], color:c[1] }; };
+const KEY = 'meeting_room_reservations_v4';
+const START_H = 8, END_H = 22, HOUR_PX = 56;
+const WEEK = ['週日','週一','週二','週三','週四','週五','週六'];
+
+// ---------- 工具 ----------
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const hm = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const toLocal = d => `${ymd(d)}T${hm(d)}`;
+const D = s => new Date(s);
+const dayStart = d => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const weekStart = d => addDays(dayStart(d), -((d.getDay() + 6) % 7)); // 週一起算
+const overlaps = (aS, aE, bS, bE) => aS < bE && aE > bS;
+const fmtFull = d => `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${hm(d)}`;
+const fmtRange = r => {
+  const s = D(r.start), e = D(r.end);
+  return `${fmtFull(s)} ～ ${ymd(s) === ymd(e) ? hm(e) : `${e.getMonth()+1}/${e.getDate()} ${hm(e)}`}`;
+};
+
+// ---------- 狀態與儲存 ----------
+let reservations = [], filter = 'all', view = innerWidth < 640 ? 'day' : 'week', anchor = new Date(), activeId = null;
+
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY));
+    if (Array.isArray(d)) return d;
+  } catch {}
+  return null;
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(reservations)); } catch {}
+  render();
+}
+
+// ---------- 防撞期 ----------
+const findConflict = (s, e) => reservations.find(r => overlaps(D(s), D(e), D(r.start), D(r.end)));
+
+// ---------- 渲染 ----------
+function renderStats() {
+  const now = new Date(), t0 = dayStart(now), t1 = addDays(t0, 1);
+  const today = reservations.filter(r => overlaps(D(r.start), D(r.end), t0, t1)).length;
+  const cadres = new Set(reservations.map(r => r.cadreKey)).size;
+  const next = reservations.filter(r => D(r.end) > now).sort((a, b) => D(a.start) - D(b.start))[0];
+  let nextHtml = '目前無即將到來的會議';
+  if (next) {
+    const c = cadreOf(next.cadreKey), s = D(next.start);
+    nextHtml = s <= now
+      ? `<span class="text-emerald-600">進行中：</span>${esc(c.name)} (${esc(next.name)})`
+      : `${s.getMonth()+1}/${s.getDate()} ${hm(s)} ${esc(c.name)}`;
+  }
+  const cards = [
+    ['📅','bg-indigo-50','總預約數', reservations.length, 'text-xl sm:text-2xl font-bold'],
+    ['⏰','bg-emerald-50','下一場會議', nextHtml, 'text-xs sm:text-sm font-semibold truncate'],
+    ['👥','bg-amber-50','活躍股別', `${cadres} / ${Object.keys(CADRES).length}`, 'text-xl sm:text-2xl font-bold'],
+    ['🗓','bg-rose-50','今日會議', today, 'text-xl sm:text-2xl font-bold']
+  ];
+  $('stats').innerHTML = cards.map(([ic,bg,label,val,cls]) => `
+    <div class="bg-white p-3.5 rounded-2xl border border-slate-200 flex items-center gap-3">
+      <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl ${bg} flex items-center justify-center text-xl shrink-0">${ic}</div>
+      <div class="overflow-hidden"><p class="text-[11px] sm:text-xs font-medium text-slate-500">${label}</p><h3 class="${cls} mt-0.5">${val}</h3></div>
+    </div>`).join('');
+}
+
+function renderControls() {
+  const chip = (key, label, dot) => `<button data-filter="${key}" class="shrink-0 text-xs px-3 py-1.5 rounded-full font-medium border flex items-center gap-1.5 ${
+    filter === key ? 'bg-slate-900 text-white border-slate-900' : 'border-slate-200 text-slate-600 hover:bg-slate-100'}">${dot ? `<span class="w-2 h-2 rounded-full" style="background:${dot}"></span>` : ''}${label}</button>`;
+  $('filters').innerHTML = `<span class="text-xs font-semibold text-slate-400 mr-1 shrink-0">篩選:</span>` + chip('all','全部顯示') +
+    Object.entries(CADRES).map(([k,[n,c]]) => chip(k, n, c)).join('');
+  $('views').innerHTML = [['day','日檢視'],['week','週檢視'],['month','月檢視']].map(([v,l]) =>
+    `<button data-view="${v}" class="text-xs font-medium px-3 py-1.5 rounded-lg ${view === v ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600'}">${l}</button>`).join('');
+
+  const y = anchor.getFullYear();
+  if (view === 'day') $('range').textContent = `${y}年${anchor.getMonth()+1}月${anchor.getDate()}日 (${WEEK[anchor.getDay()]})`;
+  else if (view === 'week') {
+    const s = weekStart(anchor), e = addDays(s, 6);
+    $('range').textContent = `${s.getMonth()+1}/${s.getDate()} - ${e.getMonth()+1}/${e.getDate()} (${y}年)`;
+  } else $('range').textContent = `${y}年${anchor.getMonth()+1}月`;
+}
+
+function renderMonth(data) {
+  const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+  const gridStart = weekStart(first);
+  const daysInMonth = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  const weeks = Math.ceil(((first.getDay() + 6) % 7 + daysInMonth) / 7);
+  const todayStr = ymd(new Date());
+  const head = ['週一','週二','週三','週四','週五','週六','週日'].map(w =>
+    `<div class="p-2.5 text-center text-[11px] font-semibold text-slate-500 border-r border-slate-200">${w}</div>`).join('');
+  let cells = '';
+  for (let i = 0; i < weeks * 7; i++) {
+    const d = addDays(gridStart, i), ds = ymd(d);
+    const inMonth = d.getMonth() === first.getMonth(), t = ds === todayStr;
+    const items = data.filter(r => overlaps(D(r.start), D(r.end), d, addDays(d, 1))).sort((a, b) => D(a.start) - D(b.start));
+    const chips = items.slice(0, 3).map(r => {
+      const c = cadreOf(r.cadreKey);
+      return `<div data-res="${esc(r.id)}" class="text-[10px] sm:text-[11px] text-white rounded-md px-1.5 py-0.5 truncate cursor-pointer hover:brightness-110" style="background:${c.color}">${hm(D(r.start))} ${esc(c.name)}</div>`;
+    }).join('');
+    const more = items.length > 3 ? `<div data-day="${ds}" class="text-[10px] text-slate-500 cursor-pointer hover:text-indigo-600">還有 ${items.length - 3} 筆…</div>` : '';
+    cells += `<div data-slot="${ds}T09:00" title="點擊預約 ${ds}" class="min-h-[96px] p-1 border-r border-b border-slate-200 cursor-pointer hover:bg-indigo-50/50 space-y-0.5 ${inMonth ? '' : 'bg-slate-50/70'}">
+      <div data-day="${ds}" class="text-xs font-bold inline-flex items-center justify-center w-6 h-6 rounded-full ${t ? 'bg-indigo-600 text-white' : inMonth ? 'text-slate-800 hover:bg-slate-100' : 'text-slate-300'}">${d.getDate()}</div>${chips}${more}</div>`;
+  }
+  return `<div class="overflow-x-auto"><div class="min-w-[640px]">
+    <div class="grid grid-cols-7 border-b border-slate-200 bg-slate-50">${head}</div>
+    <div class="grid grid-cols-7">${cells}</div></div></div>`;
+}
+
+function renderGrid(data, n) {
+  const start = n === 1 ? dayStart(anchor) : weekStart(anchor);
+  const days = Array.from({ length: n }, (_, i) => addDays(start, i));
+  const todayStr = ymd(new Date()), now = new Date();
+  const cols = `grid-template-columns:60px repeat(${n},minmax(0,1fr))`;
+  const hours = Array.from({ length: END_H - START_H }, (_, i) => START_H + i);
+
+  const header = days.map(d => {
+    const t = ymd(d) === todayStr;
+    return `<div class="p-2.5 text-center border-r border-slate-200 ${t ? 'bg-indigo-50/60' : ''}">
+      <div class="text-[11px] font-medium ${t ? 'text-indigo-600' : 'text-slate-500'}">${WEEK[d.getDay()]}</div>
+      <div class="text-sm font-bold mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full ${t ? 'bg-indigo-600 text-white' : ''}">${d.getDate()}</div>
+    </div>`;
+  }).join('');
+
+  const labels = hours.slice(1).map(h =>
+    `<div class="absolute w-full text-right pr-2 text-[11px] text-slate-400 -translate-y-2" style="top:${(h - START_H) * HOUR_PX}px">${pad(h)}:00</div>`).join('');
+
+  const columns = days.map(d => {
+    const ds = ymd(d), t = ds === todayStr;
+    const slots = hours.map(h => `<div data-slot="${ds}T${pad(h)}:00" title="點擊預約 ${ds} ${pad(h)}:00"
+      class="absolute w-full border-b border-slate-100 hover:bg-indigo-50/60 cursor-pointer group" style="top:${(h - START_H) * HOUR_PX}px;height:${HOUR_PX}px">
+      <span class="hidden group-hover:inline-block text-[10px] text-indigo-500 pl-1.5 pt-0.5">+ 預約</span></div>`).join('');
+
+    let line = '';
+    const dec = now.getHours() + now.getMinutes() / 60;
+    if (t && dec >= START_H && dec <= END_H)
+      line = `<div class="absolute w-full border-t-2 border-rose-500 z-20 pointer-events-none" style="top:${(dec - START_H) * HOUR_PX}px"></div>`;
+
+    const vs = new Date(d); vs.setHours(START_H, 0, 0, 0);
+    const ve = new Date(d); ve.setHours(END_H, 0, 0, 0);
+    const blocks = data.map(r => {
+      const s = new Date(Math.max(D(r.start), vs)), e = new Date(Math.min(D(r.end), ve));
+      if (e <= s) return '';
+      const sh = s.getHours() + s.getMinutes() / 60, eh = e.getHours() + e.getMinutes() / 60 || 24;
+      const h = Math.max((eh - sh) * HOUR_PX, 24), c = cadreOf(r.cadreKey);
+      return `<div data-res="${esc(r.id)}" class="absolute left-1 right-1 rounded-xl p-1.5 text-white shadow-sm cursor-pointer hover:brightness-110 overflow-hidden z-10"
+        style="top:${(sh - START_H) * HOUR_PX + 1}px;height:${h - 2}px;background:${c.color}">
+        <div class="text-[11px] font-bold truncate">${esc(c.name)} • ${esc(r.name)}</div>
+        ${h >= 42 ? `<div class="text-[10px] text-white/90 truncate">${hm(D(r.start))}-${hm(D(r.end))}</div>` : ''}
+        ${h >= 64 && r.topic ? `<div class="text-[10px] text-white/85 truncate">${esc(r.topic)}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    return `<div class="border-r border-slate-200 relative ${t ? 'bg-indigo-50/15' : ''}">${slots}${line}${blocks}</div>`;
+  }).join('');
+
+  return `<div class="overflow-x-auto"><div class="${n === 7 ? 'min-w-[760px]' : ''}">
+    <div class="grid border-b border-slate-200 bg-slate-50" style="${cols}"><div class="p-3 text-center text-[11px] font-semibold text-slate-400 border-r border-slate-200">時間</div>${header}</div>
+    <div class="grid relative" style="${cols};height:${(END_H - START_H) * HOUR_PX}px">
+      <div class="border-r border-slate-200 bg-slate-50/40 relative">${labels}</div>${columns}
+    </div></div></div>`;
+}
+
+function render() {
+  const data = filter === 'all' ? reservations : reservations.filter(r => r.cadreKey === filter);
+  renderStats();
+  renderControls();
+  $('schedule').innerHTML = view === 'month' ? renderMonth(data) : renderGrid(data, view === 'day' ? 1 : 7);
+}
+
+// ---------- 彈窗 ----------
+function openModal(m) {
+  m.classList.remove('hidden');
+  requestAnimationFrame(() => m.classList.remove('off'));
+}
+function closeModal(m) {
+  m.classList.add('off');
+  setTimeout(() => m.classList.add('hidden'), 200);
+}
+const closeAll = () => { ['formModal','detailModal'].forEach(id => { if (!$(id).classList.contains('hidden')) closeModal($(id)); }); activeId = null; };
+
+function openForm(presetStart) {
+  $('alert').classList.add('hidden');
+  let s;
+  if (presetStart) s = D(presetStart);
+  else { s = new Date(); s.setMinutes(s.getMinutes() >= 30 ? 60 : 30, 0, 0); }
+  $('start').value = toLocal(s);
+  $('end').value = toLocal(new Date(s.getTime() + 2 * 3600e3));
+  openModal($('formModal'));
+}
+function showAlert(msg) { $('alert').textContent = '⚠ ' + msg; $('alert').classList.remove('hidden'); }
+
+function submitForm(e) {
+  e.preventDefault();
+  $('alert').classList.add('hidden');
+  const r = { id: 'res-' + Date.now(), cadreKey: $('cadre').value, name: $('name').value.trim(),
+              start: $('start').value, end: $('end').value, topic: $('topic').value.trim() };
+  if (!r.cadreKey || !r.name || !r.start || !r.end) return showAlert('請填寫所有必填欄位！');
+  if (D(r.end) <= D(r.start)) return showAlert('結束時間必須晚於開始時間！');
+  const c = findConflict(r.start, r.end);
+  if (c) return showAlert(`該時段已被 [${cadreOf(c.cadreKey).name} - ${c.name}] 預約！(${hm(D(c.start))} - ${hm(D(c.end))})`);
+  reservations.push(r);
+  save();
+  closeModal($('formModal'));
+  $('form').reset();
+}
+
+function openDetail(id) {
+  const r = reservations.find(x => x.id === id);
+  if (!r) return;
+  activeId = id;
+  const c = cadreOf(r.cadreKey), mins = Math.round((D(r.end) - D(r.start)) / 60000);
+  $('dHead').style.background = c.color;
+  $('dCadre').textContent = c.name;
+  $('dName').textContent = r.name;
+  $('dTime').textContent = '🕒 ' + fmtRange(r);
+  $('dTopic').textContent = r.topic || '（未填寫會議事由）';
+  $('dDur').textContent = `${mins >= 60 ? Math.floor(mins / 60) + ' 小時 ' : ''}${mins % 60 ? mins % 60 + ' 分鐘' : ''}`.trim() || '0 分鐘';
+  openModal($('detailModal'));
+}
+
+function deleteActive() {
+  const r = reservations.find(x => x.id === activeId);
+  if (!r || !confirm(`確定要取消【${cadreOf(r.cadreKey).name} - ${r.name}】的這筆預約嗎？`)) return;
+  reservations = reservations.filter(x => x.id !== activeId);
+  save();
+  closeAll();
+}
+
+// ---------- 事件（全部用委派） ----------
+document.addEventListener('click', e => {
+  const t = e.target;
+  const hit = sel => t.closest(sel);
+  if (t.classList?.contains('modal')) return closeAll();          // 點背景關閉
+  if (hit('[data-close]')) return closeAll();
+  const slot = hit('[data-slot]'), res = hit('[data-res]'), nw = hit('[data-new]'),
+        f = hit('[data-filter]'), v = hit('[data-view]'), q = hit('[data-hours]');
+  if (res) return openDetail(res.dataset.res);                      // 預約色塊優先於下層空白格
+  const dayEl = hit('[data-day]');
+  if (dayEl) { anchor = D(dayEl.dataset.day + 'T00:00'); view = 'day'; return render(); } // 月檢視點日期 → 跳到日檢視
+  if (slot) return openForm(slot.dataset.slot);
+  if (nw) return openForm();
+  if (f) { filter = f.dataset.filter; return render(); }
+  if (v) { view = v.dataset.view; return render(); }
+  if (q && $('start').value) {
+    $('end').value = toLocal(new Date(D($('start').value).getTime() + q.dataset.hours * 3600e3));
+  }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAll(); });
+
+const shift = dir => {
+  anchor = view === 'month'
+    ? new Date(anchor.getFullYear(), anchor.getMonth() + dir, 1)
+    : addDays(anchor, dir * (view === 'day' ? 1 : 7));
+  render();
+};
+$('prev').onclick = () => shift(-1);
+$('next').onclick = () => shift(1);
+$('today').onclick = () => { anchor = new Date(); render(); };
+$('form').onsubmit = submitForm;
+$('delBtn').onclick = deleteActive;
+$('resetBtn').onclick = () => {
+  if (confirm('確定要清空所有預約資料嗎？')) { reservations = []; save(); }
+};
+
+// ---------- 啟動 ----------
+$('cadre').innerHTML = '<option value="" disabled selected>請選擇股別</option>' +
+  Object.entries(CADRES).map(([k, [n]]) => `<option value="${k}">${n}</option>`).join('');
+reservations = load() ?? [];
+save();
+setInterval(render, 60000); // 每分鐘更新紅線與統計
+</script>
+</body>
+</html>
