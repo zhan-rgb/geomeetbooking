@@ -36,7 +36,7 @@ body{background:#f8fafc;color:#1e293b}
 <button data-new class="sm:hidden fixed bottom-5 right-5 z-30 w-14 h-14 rounded-full bg-indigo-600 text-white shadow-lg text-2xl">＋</button>
 
 <main class="max-w-7xl mx-auto px-4 py-5 space-y-4">
-  <div id="stats" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
+  <div id="stats" class="grid grid-cols-2 lg:grid-cols-3 gap-3"></div>
 
   <div class="bg-white p-3.5 rounded-2xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
     <div id="filters" class="flex items-center gap-1.5 overflow-x-auto no-sb"></div>
@@ -165,7 +165,6 @@ const findConflict = (s, e) => reservations.find(r => overlaps(D(s), D(e), D(r.s
 function renderStats() {
   const now = new Date(), t0 = dayStart(now), t1 = addDays(t0, 1);
   const today = reservations.filter(r => overlaps(D(r.start), D(r.end), t0, t1)).length;
-  const cadres = new Set(reservations.map(r => r.cadreKey)).size;
   const next = reservations.filter(r => D(r.end) > now).sort((a, b) => D(a.start) - D(b.start))[0];
   let nextHtml = '目前無即將到來的會議';
   if (next) {
@@ -176,12 +175,11 @@ function renderStats() {
   }
   const cards = [
     ['📅','bg-indigo-50','總預約數', reservations.length, 'text-xl sm:text-2xl font-bold'],
-    ['⏰','bg-emerald-50','下一場會議', nextHtml, 'text-xs sm:text-sm font-semibold truncate'],
-    ['👥','bg-amber-50','活躍股別', `${cadres} / ${Object.keys(CADRES).length}`, 'text-xl sm:text-2xl font-bold'],
-    ['🗓','bg-rose-50','今日會議', today, 'text-xl sm:text-2xl font-bold']
+    ['🗓','bg-rose-50','今日會議', today, 'text-xl sm:text-2xl font-bold'],
+    ['⏰','bg-emerald-50','下一場會議', nextHtml, 'text-xs sm:text-sm font-semibold truncate', 'col-span-2 lg:col-span-1']
   ];
-  $('stats').innerHTML = cards.map(([ic,bg,label,val,cls]) => `
-    <div class="bg-white p-3.5 rounded-2xl border border-slate-200 flex items-center gap-3">
+  $('stats').innerHTML = cards.map(([ic,bg,label,val,cls,span = '']) => `
+    <div class="bg-white p-3.5 rounded-2xl border border-slate-200 flex items-center gap-3 ${span}">
       <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl ${bg} flex items-center justify-center text-xl shrink-0">${ic}</div>
       <div class="overflow-hidden"><p class="text-[11px] sm:text-xs font-medium text-slate-500">${label}</p><h3 class="${cls} mt-0.5">${val}</h3></div>
     </div>`).join('');
