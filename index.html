@@ -27,7 +27,6 @@ body{background:#f8fafc;color:#1e293b}
       </div>
     </div>
     <div class="flex items-center gap-2">
-      <button id="resetBtn" class="px-3 py-2 text-sm text-slate-500 hover:bg-slate-100 rounded-lg">↻ <span class="hidden md:inline">清空資料</span></button>
       <button data-new class="hidden sm:block bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-xl text-sm">＋ 立即預約</button>
     </div>
   </div>
@@ -391,9 +390,6 @@ $('next').onclick = () => shift(1);
 $('today').onclick = () => { anchor = new Date(); render(); };
 $('form').onsubmit = submitForm;
 $('delBtn').onclick = deleteActive;
-$('resetBtn').onclick = () => {
-  if (confirm('確定要清空所有預約資料嗎？')) { reservations = []; save(); }
-};
 
 // ---------- 啟動 ----------
 ['start', 'end'].forEach(k => buildTimePicker($(k + 'Box'), k));
